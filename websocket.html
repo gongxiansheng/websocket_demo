@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>websocket</title>
+	<link rel="stylesheet" href="">
+</head>
+<body>
+	<div id="state"></div>
+	<div id="message"></div>
+	<div id="tip"></div>
+	<input type="text" id="text" name="">
+	<button type="button" id="send">发送消息</button>
+	<button type="button" id="connect">建立连接</button>
+	<button type="button" id="disconnect">断开连接</button>
+	<script>
+		let tip = document.getElementById('tip')
+		let msg = document.getElementById('message')
+		let text = document.getElementById('text')
+		let state = document.getElementById('state')
+		let send = document.getElementById('send')
+		let connect = document.getElementById('connect')
+		let disconnect = document.getElementById('disconnect')
+		// let socket = new WebSocket('ws://localhost:9999')
+		var readyState = new Array("正在连接", "已建立连接", "正在关闭连接", "已关闭连接");
+		let ws = null;
+		let tt = null;
+		var lockReconnect = false;//避免重复连接
+		const url = 'ws://localhost:9999';
+		function createWebsocket(url) {
+			try{
+				ws = new WebSocket(url)
+				state.innerHTML = '当前状态：' + readyState[ws.readyState]
+				init()
+			} catch(e){
+				console.log('catch');
+        		reconnect(url);
+			}
+		}
+		connect.onclick = () => { createWebsocket(url) }
+		send.onclick = () => {
+			var value = text.value;
+			ws.send(value);
+		}
+		disconnect.onclick = () => {
+			ws.close()
+		}
+		function init() {
+			ws.onopen = () => {
+				console.log(ws.readyState + '==onpen=>'+readyState[ws.readyState])
+				state.innerHTML = '当前状态：' + readyState[ws.readyState]
+				heartCheck.start()
+			}
+			ws.onerror = (err) => {
+				console.log( ws.readyState + '==err=>'+readyState[ws.readyState])
+				tip.innerHTML = '已停止心跳'
+				reconnect(url);
+			}
+			ws.onmessage = event => {
+				let data = event.data;
+				if(data === 'HeartBeat'){
+					tip.innerHTML = '心跳检测正常'
+				}else{
+					msg.innerHTML = '服务端推送返回：' + data
+				}
+				heartCheck.start()
+			}
+			ws.onclose = () => {
+				console.log(ws.readyState + '==close=>'+readyState[ws.readyState])
+				state.innerHTML = '当前状态：' + readyState[ws.readyState]
+				reconnect(url);
+			}
+		}
+
+		function reconnect(url) {
+			if(lockReconnect) {
+		        return;
+			};
+			lockReconnect = true;
+			//没连接上会一直重连，设置延迟避免请求过多
+			tt && clearTimeout(tt);
+			tt = setTimeout(function () {
+				createWebsocket(url);
+				lockReconnect = false;
+			}, 3000);
+		}
+
+		//心跳检测
+		var heartCheck = {
+		  timeout: 3000,
+		  timeoutObj: null,
+		  serverTimeoutObj: null,
+		  start: function(){
+		    var self = this;
+		    this.timeoutObj && clearTimeout(this.timeoutObj);
+		    this.serverTimeoutObj && clearTimeout(this.serverTimeoutObj);
+		    this.timeoutObj = setTimeout(function(){
+		      ws.send("HeartBeat");
+		      self.serverTimeoutObj = setTimeout(function() {
+		        ws.close();
+		      }, self.timeout);
+
+		    }, this.timeout)
+		  }
+		}
+	</script>
+</body>
+</html>
