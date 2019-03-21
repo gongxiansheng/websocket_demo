@@ -28,3 +28,7 @@
 * ws.onerror
 * ws.onmessage
 * ws.onclose
+
+### 插件
+[websocket-heartbeat-js](https://github.com/zimv/websocket-heartbeat-js)
+[参考学习](https://www.cnblogs.com/1wen/p/5808276.html)
